@@ -1,0 +1,70 @@
+##Code for reading in the dataset and/or processing the data
+# Load the raw activity data
+activity_raw <- read.csv("activity.csv", stringsAsFactors=FALSE)
+# Transform the date attribute to an actual date format
+activity_raw$date <- as.POSIXct(activity_raw$date, format="%Y-%m-%d")
+# Compute the weekdays 
+activity_raw <- data.frame(date=activity_raw$date,weekday=tolower(weekdays(activity_raw$date)),steps=activity_raw$steps,interval=activity_raw$interval)
+# Compute the day type
+activity_raw <- cbind(activity_raw,daytype=ifelse(activity_raw$weekday == "saturday",activity_raw$weekday == "sunday", "weekend", "weekday"))
+# Create the final data.frame
+activity <- data.frame(date=activity_raw$date,weekday=activity_raw$weekday,daytype=activity_raw$daytype,interval=activity_raw$interval,steps=activity_raw$steps)
+head(activity)
+
+##Mean and median number of steps taken each day
+# Compute the total number of steps each day (NA values removed)
+sum_data <- aggregate(activity$steps, by=list(activity$date), FUN=sum, na.rm=TRUE)
+# Rename the attributes
+names(sum_data) <- c("date", "total")
+head(sum_data)
+# Compute the histogram of the total number of steps each day
+hist(sum_data$total,breaks=seq(from=0, to=25000, by=2500),col="green",xlab="Total number of steps",ylim=c(0, 20),main="Histogram of the total number of steps taken each day\n(NA removed)")
+
+#mean and median are computed 
+mean(sum_data$total)
+median(sum_data$total)
+
+
+##Time series plot of the average number of steps taken
+# Compute the means of steps accross all days for each interval
+mean_data <- aggregate(activity$steps,by=list(activity$interval),FUN=mean,na.rm=TRUE)
+# Rename the attributes
+names(mean_data) <- c("interval", "mean")
+head(mean_data)
+# Compute the time series plot
+plot(mean_data$interval,mean_data$mean,type="l",col="blue",lwd=2,xlab="Interval [minutes]",ylab="Average number of steps",main="Time-series of the average number of steps per intervals\n(NA removed)")
+# position of the maximum mean
+max_pos <- which(mean_data$mean == max(mean_data$mean))
+# value of interval at this position
+max_interval <- mean_data[max_pos, 1]
+
+##Code to describe and show a strategy for imputing missing data
+# TRUE boolean value is equivalent to 1 and a FALSE to 0
+NA_count <- sum(is.na(activity$steps))
+# Find the NA positions
+na_pos <- which(is.na(activity$steps))
+# Create a vector of means
+mean_vec <- rep(mean(activity$steps, na.rm=TRUE), times=length(na_pos))
+# Replace the NAs by the means
+activity[na_pos, "steps"] <- mean_vec
+head(activity)
+# Compute the total number of steps each day (NA values removed)
+sum_data <- aggregate(activity$steps, by=list(activity$date), FUN=sum)
+# Rename the attributes
+names(sum_data) <- c("date", "total")
+# Compute the histogram of the total number of steps each day
+hist(sum_data$total,breaks=seq(from=0, to=25000, by=2500),col="red",xlab="Total number of steps",ylim=c(0, 30),main="Histogram of the total number of steps taken each day\n(NA replaced by mean value)")
+# The mean and median are computed 
+mean(sum_data$total)
+median(sum_data$total)
+head(activity)
+
+##Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+library(lattice)
+# Compute the average number of steps taken, averaged across all daytype variable
+mean_data <- aggregate(activity$steps,by=list(activity$daytype,activity$weekday, activity$interval), mean)
+# Rename the attributes
+names(mean_data) <- c("daytype", "weekday", "interval", "mean")
+head(mean_data)
+# Compute the time serie plot
+xyplot(mean ~ interval | daytype, mean_data,type="l",lwd=1,xlab="Interval",ylab="Number of steps",layout=c(1,2))
